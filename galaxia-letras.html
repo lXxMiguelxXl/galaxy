@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galaxia de Letras</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #000000, #1a0000, #4a0000, #ff6600);
+            font-family: Arial, sans-serif;
+        }
+        
+        #canvas {
+            display: block;
+            width: 100%;
+            height: 100vh;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            z-index: 100;
+        }
+        
+        .controls h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+        }
+        
+        .controls button {
+            background: #ff6600;
+            border: none;
+            color: white;
+            padding: 8px 15px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .controls button:hover {
+            background: #ff8833;
+        }
+        
+        .audio-player {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 30px;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .play-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #ff6600;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .play-btn:hover {
+            background: #ff8833;
+        }
+        
+        .time-display {
+            color: white;
+            font-size: 14px;
+            min-width: 100px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div class="controls">
+        <h3>Controles</h3>
+        <button onclick="changeSpeed(0.5)">Lento</button>
+        <button onclick="changeSpeed(1)">Normal</button>
+        <button onclick="changeSpeed(2)">Rápido</button>
+        <button onclick="toggleRotation()">Pausar/Reanudar</button>
+    </div>
+    
+    <div class="audio-player">
+        <button class="play-btn" onclick="toggleAudio()">▶</button>
+        <div class="time-display">
+            <span id="currentTime">0:00</span> / <span id="duration">0:00</span>
+        </div>
+    </div>
+    
+    <audio id="audio" loop>
+        <source src="musica.mp3" type="audio/mp3">
+    </audio>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const audio = document.getElementById('audio');
+        
+        // Configuración del canvas
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        // Palabras con emojis
+        const palabras = [
+            '💖 Mi Luz', '🌟 Mi reflejo', '💝 Cariño', '✨ Gracias', 
+            '💎 Eres todo', '🎨 Mi bebe', '🌸 Amanecer', '⭐ Brillas',
+            '🌈 Mi amor', '🕊️ Mi paz', '💫 Libertad', '🔥 Esperanza',
+            '🌺 Dulzura', '💕 Estrella', '🌙 Mi fiesta', '☀️ Siempre Contigo',
+            '🎭 Inspiración', '💐 Mi cielo', '🦋 Alegría', '🌻 Pasión',
+            '💗 Eternidad', '🎪 Mi bubu', '🌷 Felicidad', '⚡ Siempre juntos',
+            '🎵 Mi vida', '🌹 Noche contigo', '💞 Te amo', '🎨 Magia',
+            '🌠 Mi mundo', '💓 Recuerdos', '🎯 Universo', '🌼 Mi destino',
+            '💘 Amor eterno', '🎪 Mi fortuna', '🦄 Sueños', '🌟Mi Reina',
+            '💝 Mi ternura', '🎨 Mi calma', '🌺 Tus locuras', '💫 Tu risa',
+            '🌸 Mi razón', '💕 Mi estrella', '🎭 Mi paraíso', '🔮 Mi sol'
+        ];
+        
+        // Clase para cada palabra
+        class Palabra {
+            constructor(texto, index) {
+                this.texto = texto;
+                this.angle = (index / palabras.length) * Math.PI * 2;
+                this.radius = 150 + Math.random() * 300;
+                this.y = (Math.random() - 0.5) * 400;
+                this.speed = 0.001 + Math.random() * 0.002;
+                this.size = 14 + Math.random() * 12;
+                this.opacity = 0.6 + Math.random() * 0.4;
+                this.rotationOffset = Math.random() * Math.PI * 2;
+                
+                // Colores variados
+                const colors = ['#ff6600', '#ffaa00', '#ff0066', '#ff3366', '#ffcc00', '#ffffff', '#ffdd99'];
+                this.color = colors[Math.floor(Math.random() * colors.length)];
+            }
+            
+            update(globalRotation, speedMultiplier) {
+                this.angle += this.speed * speedMultiplier;
+            }
+            
+            draw(ctx, centerX, centerY, globalRotation) {
+                const totalAngle = this.angle + globalRotation + this.rotationOffset;
+                const x = centerX + Math.cos(totalAngle) * this.radius;
+                const y = centerY + this.y + Math.sin(totalAngle) * 50;
+                const z = Math.sin(totalAngle) * this.radius;
+                
+                // Calcular escala basada en profundidad
+                const scale = (z + this.radius) / (this.radius * 2);
+                const displaySize = this.size * (0.5 + scale * 0.5);
+                const displayOpacity = this.opacity * scale;
+                
+                ctx.save();
+                ctx.globalAlpha = displayOpacity;
+                ctx.font = `bold ${displaySize}px Arial`;
+                ctx.fillStyle = this.color;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // Sombra para más efecto
+                ctx.shadowColor = this.color;
+                ctx.shadowBlur = 10;
+                
+                ctx.fillText(this.texto, x, y);
+                ctx.restore();
+            }
+        }
+        
+        // Crear todas las palabras
+        const items = palabras.map((palabra, index) => new Palabra(palabra, index));
+        
+        let globalRotation = 0;
+        let speedMultiplier = 1;
+        let isRotating = true;
+        let isPlaying = false;
+        
+        // Animación
+        function animate() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            
+            // Dibujar el círculo central negro con resplandor anaranjado
+            // Resplandor exterior anaranjado (tamaño medio)
+            const gradient = ctx.createRadialGradient(centerX, centerY, 100, centerX, centerY, 450);
+            gradient.addColorStop(0, 'rgba(255, 102, 0, 0.8)');
+            gradient.addColorStop(0.3, 'rgba(255, 102, 0, 0.6)');
+            gradient.addColorStop(0.5, 'rgba(255, 102, 0, 0.4)');
+            gradient.addColorStop(0.7, 'rgba(255, 102, 0, 0.2)');
+            gradient.addColorStop(1, 'rgba(255, 102, 0, 0)');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 450, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Círculo negro central
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 120, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Borde anaranjado del círculo
+            ctx.strokeStyle = 'rgba(255, 102, 0, 0.8)';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 120, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            if (isRotating) {
+                globalRotation += 0.003 * speedMultiplier;
+            }
+            
+            // Ordenar por profundidad para dibujar correctamente
+            items.sort((a, b) => {
+                const zA = Math.sin(a.angle + globalRotation + a.rotationOffset) * a.radius;
+                const zB = Math.sin(b.angle + globalRotation + b.rotationOffset) * b.radius;
+                return zA - zB;
+            });
+            
+            items.forEach(item => {
+                item.update(globalRotation, speedMultiplier);
+                item.draw(ctx, centerX, centerY, globalRotation);
+            });
+            
+            requestAnimationFrame(animate);
+        }
+        
+        // Funciones de control
+        function changeSpeed(speed) {
+            speedMultiplier = speed;
+        }
+        
+        function toggleRotation() {
+            isRotating = !isRotating;
+        }
+        
+        function toggleAudio() {
+            const playBtn = document.querySelector('.play-btn');
+            if (isPlaying) {
+                audio.pause();
+                playBtn.textContent = '▶';
+                isPlaying = false;
+            } else {
+                audio.play();
+                playBtn.textContent = '⏸';
+                isPlaying = true;
+            }
+        }
+        
+        // Actualizar tiempo del audio
+        audio.addEventListener('timeupdate', () => {
+            const currentTime = Math.floor(audio.currentTime);
+            const duration = Math.floor(audio.duration) || 0;
+            
+            document.getElementById('currentTime').textContent = 
+                Math.floor(currentTime / 60) + ':' + String(currentTime % 60).padStart(2, '0');
+            document.getElementById('duration').textContent = 
+                Math.floor(duration / 60) + ':' + String(duration % 60).padStart(2, '0');
+        });
+        
+        // Ajustar canvas al cambiar tamaño
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+        
+        // Interacción con mouse
+        let mouseX = 0;
+        let mouseY = 0;
+        
+        canvas.addEventListener('mousemove', (e) => {
+            mouseX = (e.clientX - canvas.width / 2) / canvas.width;
+            mouseY = (e.clientY - canvas.height / 2) / canvas.height;
+        });
+        
+        // Iniciar animación
+        animate();
+    </script>
+</body>
+</html>
